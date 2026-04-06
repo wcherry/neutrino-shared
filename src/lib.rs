@@ -3,7 +3,15 @@ pub mod auth;
 pub mod drive_client;
 pub mod errors;
 pub mod logger;
+pub mod helper;
 
 pub use api_error::ApiError;
 pub use errors::{AppError, AppResult};
 pub use logger::init_logging;
+pub use helper::get_env_or_secret;
+
+use diesel::prelude::*;
+use diesel::r2d2::{ConnectionManager, Pool};
+
+pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
+pub type DbConnection = diesel::r2d2::PooledConnection<ConnectionManager<SqliteConnection>>;

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 actix-web = "4"
 chrono = { version = "0.4", features = ["serde"] }
-diesel = "2"
+diesel = { version = "2", features = ["sqlite", "r2d2", "chrono"] }
 hex = "0.4"
 jsonwebtoken = "9"
 rand_core = { version = "0.6", features = ["getrandom"] }
