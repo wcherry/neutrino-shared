@@ -28,16 +28,28 @@ fn extract_user(req: &HttpRequest) -> Result<AuthenticatedUser, ApiError> {
         .app_data::<web::Data<Arc<TokenService>>>()
         .ok_or_else(|| ApiError::internal("Token service unavailable"))?;
 
-    let auth_header = req
-        .headers()
-        .get("Authorization")
-        .ok_or_else(|| ApiError::unauthorized("Missing Authorization header"))?
-        .to_str()
-        .map_err(|_| ApiError::unauthorized("Invalid Authorization header"))?;
-
-    let token = auth_header
-        .strip_prefix("Bearer ")
-        .ok_or_else(|| ApiError::unauthorized("Authorization header must use Bearer scheme"))?;
+    // Accept token from Authorization header or ?token= query param (used for direct download URLs)
+    let token = if let Some(auth_header) = req.headers().get("Authorization") {
+        let header_str = auth_header
+            .to_str()
+            .map_err(|_| ApiError::unauthorized("Invalid Authorization header"))?;
+        header_str
+            .strip_prefix("Bearer ")
+            .ok_or_else(|| ApiError::unauthorized("Authorization header must use Bearer scheme"))?
+            .to_string()
+    } else {
+        let query = req.query_string();
+        query
+            .split('&')
+            .find_map(|pair| {
+                let mut parts = pair.splitn(2, '=');
+                let key = parts.next()?;
+                let val = parts.next()?;
+                if key == "token" { Some(val.to_string()) } else { None }
+            })
+            .ok_or_else(|| ApiError::unauthorized("Missing Authorization header"))?
+    };
+    let token = token.as_str();
 
     let claims = token_service.validate_access_token(token)?;
 
