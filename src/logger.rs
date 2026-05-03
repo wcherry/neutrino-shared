@@ -1,7 +1,8 @@
 use tracing_appender::{rolling, non_blocking};
+use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, fmt, fmt::time::UtcTime};
 
-pub fn init_logging(log_level: &str, log_path: Option<String>) {
+pub fn init_logging(log_level: &str, log_path: Option<String>) -> Option<WorkerGuard> {
     let stdout_layer = fmt::layer()
         .with_timer(UtcTime::rfc_3339())
         .with_writer(std::io::stdout);
@@ -12,13 +13,15 @@ pub fn init_logging(log_level: &str, log_path: Option<String>) {
 
     if let Some(path) = log_path {
         let file_appender = rolling::daily(path, "service.log");
-        let (file_writer, _guard) = non_blocking(file_appender);
+        let (file_writer, guard) = non_blocking(file_appender);
 
         let file_layer = fmt::layer()
             .with_timer(UtcTime::rfc_3339())
             .with_writer(file_writer);
         sub.with(file_layer).init();
+        Some(guard)
     } else {
         sub.init();
+        None
     }
 }

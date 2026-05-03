@@ -77,6 +77,33 @@ impl TokenService {
         Ok((token, expires_at))
     }
 
+    pub fn generate_token_with_custom_expiry(
+        &self,
+        user_id: &str,
+        email: &str,
+        is_admin: bool,
+        expiry_secs: i64,
+    ) -> Result<String, ApiError> {
+        let now = Utc::now();
+        let expiry = now + Duration::seconds(expiry_secs);
+        let claims = Claims {
+            sub: user_id.to_string(),
+            email: email.to_string(),
+            exp: expiry.timestamp(),
+            iat: now.timestamp(),
+            is_admin,
+        };
+        encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(self.secret.as_bytes()),
+        )
+        .map_err(|e| {
+            tracing::error!("Failed to generate token: {:?}", e);
+            ApiError::internal("Failed to generate token")
+        })
+    }
+
     pub fn validate_access_token(&self, token: &str) -> Result<Claims, ApiError> {
         decode::<Claims>(
             token,
